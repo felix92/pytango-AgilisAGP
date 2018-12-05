@@ -1,0 +1,30 @@
+Installieren des Devices mittels "Jive"
+#######################################
+
+1. Installieren
+---------------
+
+Anlegen eines neuen Devices:
+
+Server (Servername/Instance) : SMC100/hhg
+Class: SMC100
+Device: hhg/SMC100/Ctrl1
+
+"Register Server"
+
+Ctrl1: SMC mit der Adresse 1 
+
+
+1.2. Konfiguration
+-------------------
+
+Die Properties:
+Name: Address   Value: 0..15		# Adresse des Controllers: 0..15
+Name: Port	Value: 0 oder 1 	# serieller Port (com1, com2 .., /dev/tty, /dev/ttyUSB0 ..  )
+	
+1.3. Starten
+---------------
+
+# python SMC100.py hhg
+
+
