@@ -237,7 +237,8 @@ class AgilisAGP(Device):
         if self.__ERROR_OUT_OF_RANGE == self.get_cmd_error_string():
             self.__Out_Of_Range = True
         else:
-            self.__Out_Of_Range = False     
+            self.__Out_Of_Range = False 
+            self.__Motor_Run = True    
         # PROTECTED REGION END #    //  AgilisAGP.position_write
 
 
