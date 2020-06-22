@@ -98,7 +98,7 @@ class AgilisAGP(Device):
     Conversion = attribute(
         dtype='DevDouble',
         access=AttrWriteType.READ_WRITE,
-        unit="deviceValue/setValue",
+        unit="hardwareUnit/setUnit",
         memorized=True,
         hw_memorized=True,
     )
@@ -213,10 +213,12 @@ class AgilisAGP(Device):
             self.write_read('PA' + str(value))
             if self.__ERROR_OUT_OF_RANGE == self.get_cmd_error_string():
                 self.set_status("The device is in ALARM state. Target position OUT OF RANGE")
-                self.debug_stream("device state: ALARM (position OUT OF RANGE)")
+                self.error_stream("device state: ALARM (position OUT OF RANGE)")
                 self.set_state(DevState.ALARM) 
         else:
-            self.error_stream("target position of {:f} exceeds unit limits".format(value))
+            self.set_status("The device is in ALARM state. Target position OUT OF RANGE")
+            self.error_stream("device state: ALARM (position OUT OF RANGE)")
+            self.set_state(DevState.ALARM) 
         pass
         # PROTECTED REGION END #    //  AgilisAGP.Position_write
         
@@ -281,7 +283,8 @@ class AgilisAGP(Device):
             if self.__agp_state in self.__STATE_NOT_REFERENCED:
                 self.set_status("The device is in ALARM state. Not referenced.")
                 self.debug_stream("device state: ALARM (Not referenced)")
-                return DevState.ALARM      
+                return DevState.ALARM    
+        self.set_status("The device is in ON state")
         return DevState.ON
 
         # PROTECTED REGION END #    //  AgilisAGP.State
