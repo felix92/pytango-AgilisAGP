@@ -225,26 +225,26 @@ class AgilisAGP(Device):
     def read_UnitLimitMin(self):
         # PROTECTED REGION ID(AgilisAGP.UnitLimitMin_read) ENABLED START #
         """Return the UnitLimitMin attribute."""
-        return self.__unit_limit_min/self.__conversion
+        return self.__unit_limit_min
         # PROTECTED REGION END #    //  AgilisAGP.UnitLimitMin_read
 
     def write_UnitLimitMin(self, value):
         # PROTECTED REGION ID(AgilisAGP.UnitLimitMin_write) ENABLED START #
         """Set the UnitLimitMin attribute."""
-        self.__unit_limit_min = value*self.__conversion
+        self.__unit_limit_min = value
         pass
         # PROTECTED REGION END #    //  AgilisAGP.UnitLimitMin_write
 
     def read_UnitLimitMax(self):
         # PROTECTED REGION ID(AgilisAGP.UnitLimitMax_read) ENABLED START #
         """Return the UnitLimitMax attribute."""
-        return self.__unit_limit_max/self.__conversion
+        return self.__unit_limit_max
         # PROTECTED REGION END #    //  AgilisAGP.UnitLimitMax_read
 
     def write_UnitLimitMax(self, value):
         # PROTECTED REGION ID(AgilisAGP.UnitLimitMax_write) ENABLED START #
         """Set the UnitLimitMax attribute."""
-        self.__unit_limit_max = value*self.__conversion
+        self.__unit_limit_max = value
         pass
         # PROTECTED REGION END #    //  AgilisAGP.UnitLimitMax_write
 
