@@ -204,14 +204,14 @@ class AgilisAGP(Device):
 
     def read_Position(self):
         # PROTECTED REGION ID(AgilisAGP.Position_read) ENABLED START #
-        self.__position = float(self.write_read('TP?'))#/self.__conversion
+        self.__position = float(self.write_read('TP?'))/self.__conversion
         return self.__position
         # PROTECTED REGION END #    //  AgilisAGP.Position_read
 
     def write_Position(self, value):
         # PROTECTED REGION ID(AgilisAGP.Position_write) ENABLED START #
-        #value = value * self.__conversion
         if value>=self.__unit_limit_min and value<=self.__unit_limit_max:
+            value = value * self.__conversion
             self.write_read('PA' + str(value))
             if self.__ERROR_OUT_OF_RANGE == self.get_cmd_error_string():
                 self.set_status("The device is in ALARM state. Target position OUT OF RANGE")
@@ -225,26 +225,26 @@ class AgilisAGP(Device):
     def read_UnitLimitMin(self):
         # PROTECTED REGION ID(AgilisAGP.UnitLimitMin_read) ENABLED START #
         """Return the UnitLimitMin attribute."""
-        return self.__unit_limit_min
+        return self.__unit_limit_min/self.__conversion
         # PROTECTED REGION END #    //  AgilisAGP.UnitLimitMin_read
 
     def write_UnitLimitMin(self, value):
         # PROTECTED REGION ID(AgilisAGP.UnitLimitMin_write) ENABLED START #
         """Set the UnitLimitMin attribute."""
-        self.__unit_limit_min = value
+        self.__unit_limit_min = value*self.__conversion
         pass
         # PROTECTED REGION END #    //  AgilisAGP.UnitLimitMin_write
 
     def read_UnitLimitMax(self):
         # PROTECTED REGION ID(AgilisAGP.UnitLimitMax_read) ENABLED START #
         """Return the UnitLimitMax attribute."""
-        return self.__unit_limit_max
+        return self.__unit_limit_max/self.__conversion
         # PROTECTED REGION END #    //  AgilisAGP.UnitLimitMax_read
 
     def write_UnitLimitMax(self, value):
         # PROTECTED REGION ID(AgilisAGP.UnitLimitMax_write) ENABLED START #
         """Set the UnitLimitMax attribute."""
-        self.__unit_limit_max = value
+        self.__unit_limit_max = value*self.__conversion
         pass
         # PROTECTED REGION END #    //  AgilisAGP.UnitLimitMax_write
 
