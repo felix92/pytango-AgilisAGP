@@ -87,8 +87,6 @@ class AgilisAGP(Device):
     # ----------
 
     Position = attribute(
-        min_value = 0.0,
-        max_value = 340.0,
         dtype='DevDouble',
         access=AttrWriteType.READ_WRITE,
         label="angle",
@@ -100,7 +98,7 @@ class AgilisAGP(Device):
     Conversion = attribute(
         dtype='DevDouble',
         access=AttrWriteType.READ_WRITE,
-        unit="deviceUnits/degree",
+        unit="deviceValue/setValue",
         memorized=True,
         hw_memorized=True,
     )
