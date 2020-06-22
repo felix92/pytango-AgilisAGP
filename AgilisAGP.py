@@ -14,21 +14,20 @@
 __all__ = ["AgilisAGP", "main"]
 
 # PyTango imports
-import PyTango
-from PyTango import DebugIt, DeviceProxy
-from PyTango.server import run
-from PyTango.server import Device, DeviceMeta
-from PyTango.server import attribute, command, pipe
-from PyTango.server import class_property, device_property
-from PyTango import AttrQuality,DispLevel, DevState
-from PyTango import AttrWriteType, PipeWriteType
+import tango
+from tango import DebugIt, DeviceProxy
+from tango.server import run
+from tango.server import Device, DeviceMeta
+from tango.server import attribute, command, pipe
+from tango.server import class_property, device_property
+from tango import AttrQuality,DispLevel, DevState
+from tango import AttrWriteType, PipeWriteType
 # Additional import
 # PROTECTED REGION ID(AgilisAGP.additionnal_import) ENABLED START #
 from time import sleep
 import serial
 # PROTECTED REGION END #    //  AgilisAGP.additionnal_import
 
-flagDebugIO = 0
 
 
 class AgilisAGP(Device):
@@ -50,10 +49,10 @@ class AgilisAGP(Device):
     # -----------------
 
     Address = device_property(
-        dtype='int16',
+        dtype='DevLong',
     )
     Port = device_property(
-        dtype='str',
+        dtype='DevString',
     )
 
 
@@ -81,33 +80,16 @@ class AgilisAGP(Device):
     
     __agp_state    = ''
     __error        = ''
-    
-# private status variables, are are updated by "get_smc__state()"
-    __Motor_Run   = False
-    __Referenced  = False
-    __Homing      = False
-    __Out_Of_Range= False
-    __Pos         = 0.000
-    
-    
+  
     
     # ----------
     # Attributes
     # ----------
 
-    
-    range_error = attribute(
-        dtype='bool',
-        doc = 'if the new set position out of range\n when this flag is true'
-    )
-    moving = attribute(
-        dtype='bool',
-        doc = 'if motor in moving this flag is true'
-    )
-    position = attribute(
+    Position = attribute(
         min_value = 0.0,
         max_value = 340.0,
-        dtype='float',
+        dtype='DevDouble',
         access=AttrWriteType.READ_WRITE,
         label="angle",
         unit="degree",
@@ -115,13 +97,26 @@ class AgilisAGP(Device):
         format="%8.3f",
         doc = 'absolute position in degrees'
     )
-    homing = attribute(
-        dtype='bool',
-        doc = 'the position in degrees'
+    Conversion = attribute(
+        dtype='DevDouble',
+        access=AttrWriteType.READ_WRITE,
+        unit="deviceUnits/degree",
+        memorized=True,
+        hw_memorized=True,
     )
-    referenced = attribute(
-        dtype='bool',
-        doc = 'show the REFERENCED state'
+    UnitLimitMin = attribute(
+        dtype='DevDouble',
+        access=AttrWriteType.READ_WRITE,
+        unit="degree",
+        memorized=True,
+        hw_memorized=True,
+    )
+    UnitLimitMax = attribute(
+        dtype='DevDouble',
+        access=AttrWriteType.READ_WRITE,
+        unit="degree",
+        memorized=True,
+        hw_memorized=True,
     )
     
     
@@ -134,18 +129,23 @@ class AgilisAGP(Device):
     # ---------------
 
     def init_device(self):
+        self.info_stream("init_device()")
         Device.init_device(self)
+        self.set_state(DevState.INIT)
+        
         # PROTECTED REGION ID(AgilisAGP.init_device) ENABLED START #
+        self.__position = 0.0
+        self.__unit_limit_min = 0.0
+        self.__unit_limit_max = 0.0
+        self.__conversion = 0.0
         
         self.proxy = DeviceProxy(self.get_name())
-        
         self.__agpID = str(self.Address)
         self.__port  = self.Port
         
-        if flagDebugIO:
-            print("Get_name: %s" % (self.get_name()))
-            print("Connecting to AgilisAGP on %s" %(self.__port))
-            print("Device address: %s" %(self.__agpID))
+        self.debug_stream("Get_name: %s" % (self.get_name()))
+        self.debug_stream("Connecting to AgilisAGP on %s" %(self.__port))
+        self.debug_stream("Device address: %s" %(self.__agpID))
             
         self.__ser_port = serial.Serial(
             port = self.__port,
@@ -162,16 +162,11 @@ class AgilisAGP(Device):
         self.__ser_port.open()
         
         if ("CONEX-AGP" in self.read_controller_info()):
-            self.get_agp_state()
-            self.read_position()
-            self.set_state(PyTango.DevState.ON)  
+            self.set_status("The device is in ON state")
+            self.set_state(DevState.ON)  
         else:
-            self.set_state(PyTango.DevState.OFF)
-        
-        
-        if flagDebugIO:
-            print "Run: ",self.__Motor_Run
-            print "Postion: ", self.__Pos    
+            self.set_status("The device is in OFF state")
+            self.set_state(DevState.OFF)
             
         # PROTECTED REGION END #    //  AgilisAGP.init_device
 
@@ -184,27 +179,19 @@ class AgilisAGP(Device):
         # PROTECTED REGION ID(AgilisAGP.delete_device) ENABLED START #
         if self.__ser_port.isOpen():
             self.__ser_port.close()
+            self.set_status("The device is in OFF state")
+            self.set_state(DevState.OFF)
         # PROTECTED REGION END #    //  AgilisAGP.delete_device
     
-    
-    # def read_controller_info(self):
-    #     return (self.write_read('VE?'))
-    #     
-    # def read_controller_identifier(self):
-    #     return (self.write_read('ID?'))
     
     def send_cmd(self, cmd):
         # PROTECTED REGION ID(AgilisAGP.send_cmd) ENABLED START #
         snd_str = cmd + self.__EOL
         self.__ser_port.flushOutput()
-        self.__ser_port.write(snd_str)
+        self.debug_stream("write command: {:s}".format(snd_str))
+        self.__ser_port.write(snd_str.encode("utf-8"))
         self.__ser_port.flush()
         # PROTECTED REGION END #    //  AgilisAGP.send_cmd    
-
-    def get_position(self):
-        pos = self.write_read('TP?')
-        if pos != '':
-            self.__Pos = float(pos)   
 
     def get_cmd_error_string(self):
         error = self.write_read('TE?')
@@ -215,42 +202,65 @@ class AgilisAGP(Device):
     # Attributes methods
     # ------------------
 
-    
-    def read_range_error(self):
-        # PROTECTED REGION ID(AgilisAGP.range_error) ENABLED START #
-        return self.__Out_Of_Range
-        # PROTECTED REGION END #    //  AgilisAGP.range_error
+    def read_Position(self):
+        # PROTECTED REGION ID(AgilisAGP.Position_read) ENABLED START #
+        self.__position = float(self.write_read('TP?'))#/self.__conversion
+        return self.__position
+        # PROTECTED REGION END #    //  AgilisAGP.Position_read
 
-    def read_moving(self):
-        # PROTECTED REGION ID(AgilisAGP.moving_read) ENABLED START #
-        return self.__Motor_Run
-        # PROTECTED REGION END #    //  AgilisAGP.moving_read
-
-    def read_position(self):
-        # PROTECTED REGION ID(AgilisAGP.position_read) ENABLED START #
-        return self.__Pos
-        # PROTECTED REGION END #    //  AgilisAGP.position_read
-
-    def write_position(self, value):
-        # PROTECTED REGION ID(AgilisAGP.position_write) ENABLED START #
-        self.write_read('PA' + str(value))
-        if self.__ERROR_OUT_OF_RANGE == self.get_cmd_error_string():
-            self.__Out_Of_Range = True
+    def write_Position(self, value):
+        # PROTECTED REGION ID(AgilisAGP.Position_write) ENABLED START #
+        #value = value * self.__conversion
+        if value>=self.__unit_limit_min and value<=self.__unit_limit_max:
+            self.write_read('PA' + str(value))
+            if self.__ERROR_OUT_OF_RANGE == self.get_cmd_error_string():
+                self.set_status("The device is in ALARM state. Target position OUT OF RANGE")
+                self.debug_stream("device state: ALARM (position OUT OF RANGE)")
+                self.set_state(DevState.ALARM) 
         else:
-            self.__Out_Of_Range = False 
-            self.__Motor_Run = True    
-        # PROTECTED REGION END #    //  AgilisAGP.position_write
+            self.error_stream("target position of {:f} exceeds unit limits".format(value))
+        pass
+        # PROTECTED REGION END #    //  AgilisAGP.Position_write
+        
+    def read_UnitLimitMin(self):
+        # PROTECTED REGION ID(AgilisAGP.UnitLimitMin_read) ENABLED START #
+        """Return the UnitLimitMin attribute."""
+        return self.__unit_limit_min
+        # PROTECTED REGION END #    //  AgilisAGP.UnitLimitMin_read
 
+    def write_UnitLimitMin(self, value):
+        # PROTECTED REGION ID(AgilisAGP.UnitLimitMin_write) ENABLED START #
+        """Set the UnitLimitMin attribute."""
+        self.__unit_limit_min = value
+        pass
+        # PROTECTED REGION END #    //  AgilisAGP.UnitLimitMin_write
 
-    def read_homing(self):
-        # PROTECTED REGION ID(AgilisAGP.homing_read) ENABLED START #
-        return self.__Homing
-        # PROTECTED REGION END #    //  AgilisAGP.homing_read
+    def read_UnitLimitMax(self):
+        # PROTECTED REGION ID(AgilisAGP.UnitLimitMax_read) ENABLED START #
+        """Return the UnitLimitMax attribute."""
+        return self.__unit_limit_max
+        # PROTECTED REGION END #    //  AgilisAGP.UnitLimitMax_read
 
-    def read_referenced(self):
-        # PROTECTED REGION ID(AgilisAGP.homing_read) ENABLED START #
-        return self.__Referenced
-        # PROTECTED REGION END #    //  AgilisAGP.homing_read
+    def write_UnitLimitMax(self, value):
+        # PROTECTED REGION ID(AgilisAGP.UnitLimitMax_write) ENABLED START #
+        """Set the UnitLimitMax attribute."""
+        self.__unit_limit_max = value
+        pass
+        # PROTECTED REGION END #    //  AgilisAGP.UnitLimitMax_write
+
+    def read_Conversion(self):
+        # PROTECTED REGION ID(AgilisAGP.Conversion_read) ENABLED START #
+        """Return the Conversion attribute."""
+        return self.__conversion
+        # PROTECTED REGION END #    //  AgilisAGP.Conversion_read
+
+    def write_Conversion(self, value):
+        # PROTECTED REGION ID(AgilisAGP.Conversion_write) ENABLED START #
+        """Set the Conversion attribute."""
+        self.__conversion = value
+        pass
+        # PROTECTED REGION END #    //  AgilisAGP.Conversion_write
+        
     # -------------
     # Pipes methods
     # -------------
@@ -258,6 +268,26 @@ class AgilisAGP(Device):
     # --------
     # Commands
     # --------
+    
+    def dev_state(self):
+        # PROTECTED REGION ID(AgilisAGP.State) ENABLED START #
+        resp = ''
+        resp = self.write_read('TS?')
+        if (resp != ''):
+            self.__error = int(resp[:4],16)
+            self.__agp_state = resp[4:].strip()
+            if (self.__agp_state in self.__STATE_MOVING):
+                self.set_status("The device is in MOVING state")
+                self.debug_stream("device state: MOVING")
+                return DevState.MOVING
+            if self.__agp_state in self.__STATE_NOT_REFERENCED:
+                self.set_status("The device is in ALARM state. Not referenced.")
+                self.debug_stream("device state: ALARM (Not referenced)")
+                return DevState.ALARM      
+        return DevState.ON
+
+        # PROTECTED REGION END #    //  AgilisAGP.State
+    
     @command(dtype_in=str, 
     dtype_out=str, 
     )
@@ -272,7 +302,8 @@ class AgilisAGP(Device):
             send_str = self.__agpID + argin
             self.__ser_port.flushInput()
             self.send_cmd(send_str)
-            tmp_answer = self.__ser_port.readline()
+            tmp_answer = self.__ser_port.readline().decode("utf-8")
+            self.debug_stream("read response: {:s}".format(tmp_answer))
             if tmp_answer.startswith(prefix):
                 answer = tmp_answer[len(prefix):]
             else:
@@ -285,58 +316,34 @@ class AgilisAGP(Device):
         # PROTECTED REGION END #    //  AgilisAGP.write_read
         
 
-    @command
-    @DebugIt()
-    def stop_motion(self):
-        # PROTECTED REGION ID(AgilisAGP.stop_motion) ENABLED START #
+    @command(
+    )
+    def StopMove(self):
+        # PROTECTED REGION ID(AgilisAGP.StopMove) ENABLED START #
         self.write_read('ST')
-        # PROTECTED REGION END #    //  AgilisAGP.stop_motion
-    
-    
-    @command (
-    dtype_out=str, polling_period= 100, doc_out='state of AgilisAGP' ) 
-    @DebugIt()
-    def get_agp_state(self):
-        # PROTECTED REGION ID(AgilisAGP.get_agp_state) ENABLED START #
-        self.get_position()
-        resp = ''
-        resp = self.write_read('TS?')
-        if (resp != ''):
-            self.__error = int(resp[:4],16)
-            self.__agp_state = resp[4:].strip()
-            if (self.__agp_state in self.__STATE_MOVING):
-                self.__Motor_Run   = True
-            else:
-                self.__Motor_Run   = False
-            if self.__agp_state in self.__STATE_NOT_REFERENCED:
-                self.__Referenced  = False
-            else:
-                self.__Referenced  = True           
-        return resp
-        # PROTECTED REGION END #    //  AgilisAGP.get_agp_state
+        pass
+        # PROTECTED REGION END #    //  AgilisAGP.StopMove
 
-    @command
-    @DebugIt()
-    def homing(self):
-        # PROTECTED REGION ID(AgilisAGP.homing) ENABLED START #
+    @command(
+    )
+    def Home(self):
+        # PROTECTED REGION ID(AgilisAGP.Home) ENABLED START #
         self.write_read('OR')
-        # PROTECTED REGION END #    //  AgilisAGP.homing
+        pass
+        # PROTECTED REGION END #    //  AgilisAGP.Home
     
     @command(dtype_out=str)
-    @DebugIt()
-    def reset(self):
-        # PROTECTED REGION ID(AgilisAGP.reset) ENABLED START #
+    def ResetMotor(self):
+        # PROTECTED REGION ID(AgilisAGP.ResetMotor) ENABLED START #
         self.write_read('RS')
         return ("Device reset, do homing now!")
-        # PROTECTED REGION END #    //  AgilisAGP.reset
+        # PROTECTED REGION END #    //  AgilisAGP.ResetMotor
     
     @command(dtype_out=str)
-    @DebugIt()
     def read_controller_info(self):
         return (self.write_read('VE?'))
     
-    @command(dtype_out=str)
-    @DebugIt()    
+    @command(dtype_out=str) 
     def read_controller_identifier(self):
         return (self.write_read('ID?'))
 # ----------
@@ -346,7 +353,6 @@ class AgilisAGP(Device):
 
 def main(args=None, **kwargs):
     # PROTECTED REGION ID(AgilisAGP.main) ENABLED START #
-    from PyTango.server import run
     return run((AgilisAGP,), args=args, **kwargs)
     # PROTECTED REGION END #    //  AgilisAGP.main
 
