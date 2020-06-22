@@ -285,7 +285,8 @@ class AgilisAGP(Device):
                 self.debug_stream("device state: ALARM (Not referenced)")
                 return DevState.ALARM    
         self.set_status("The device is in ON state")
-        return DevState.ON
+        pass
+        #return DevState.ON
 
         # PROTECTED REGION END #    //  AgilisAGP.State
     
