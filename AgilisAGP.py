@@ -339,6 +339,13 @@ class AgilisAGP(Device):
         self.write_read('RS')
         return ("Device reset, do homing now!")
         # PROTECTED REGION END #    //  AgilisAGP.ResetMotor
+        
+    @command(
+    )
+    def Calibrate(self):
+        # PROTECTED REGION ID(AgilisAGP.Calibrate) ENABLED START #
+        pass
+        # PROTECTED REGION END #    //  AgilisAGP.Calibrate
     
     @command(dtype_out=str)
     def read_controller_info(self):
