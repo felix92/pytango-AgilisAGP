@@ -340,9 +340,8 @@ class AgilisAGP(Device):
         return ("Device reset, do homing now!")
         # PROTECTED REGION END #    //  AgilisAGP.ResetMotor
         
-    @command(
-    )
-    def Calibrate(self):
+    @command(dtype_in='DevDouble')
+    def Calibrate(self,argin):
         # PROTECTED REGION ID(AgilisAGP.Calibrate) ENABLED START #
         pass
         # PROTECTED REGION END #    //  AgilisAGP.Calibrate
