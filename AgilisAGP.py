@@ -28,7 +28,7 @@ class AgilisAGP(Device):
         max_value = 340.0,
         dtype='float',
         access=AttrWriteType.READ_WRITE,
-        label="Angle",
+        label="Position",
         unit="degree",
         format="%10.5f",
         doc = 'absolute position in degrees'
@@ -60,8 +60,8 @@ class AgilisAGP(Device):
         except:
             self.error_stream('Cannot connect!')
             self.set_state(DevState.OFF)
-        
-    def dev_state(self):
+
+    def always_executed_hook(self):
         res = self.query('TS?')
         if (res != ''):
             self.__error = int(res[:4],16)
@@ -69,22 +69,15 @@ class AgilisAGP(Device):
             if (state in self.__STATE_MOVING):
                 self.set_status('Device is MOVING')
                 self.set_state(DevState.MOVING)
-                return DevState.MOVING
             elif (state in self.__STATE_NOT_REFERENCED):
                 self.set_status('Device is NOT REFERENCED\nDo HOMING first!')
                 self.set_state(DevState.OFF)
-                return DevState.OFF
             elif (state in self.__STATE_READY):
                 self.set_status('Device is ON')
                 self.set_state(DevState.ON)
-                return DevState.ON
             else:
                 self.set_status('Device is UNKOWN')
                 self.set_state(DevState.UNKNOWN)
-                return DevState.UNKNOWN
-
-    def always_executed_hook(self):
-        pass
 
     def delete_device(self):
         if self.__ser_port.isOpen():
