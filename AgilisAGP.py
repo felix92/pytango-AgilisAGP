@@ -80,9 +80,9 @@ class AgilisAGP(Device):
                 self.set_state(DevState.UNKNOWN)
 
     def delete_device(self):
-        if self.__ser_port.isOpen():
-            self.__ser_port.close()    
-        self.info_stream('Connection closed for port {:s}'.format(self.Port))
+        if self.serial.isOpen():
+            self.serial.close()    
+            self.info_stream('Connection closed for port {:s}'.format(self.Port))
 
     def read_position(self):
         return float(self.query('TP?'))
